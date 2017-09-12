@@ -8,11 +8,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.*;
+
 import org.wiztools.commons.StringUtil;
 import org.wiztools.restclient.bean.Request;
 import org.wiztools.restclient.ui.RESTUserInterface;
@@ -21,28 +23,31 @@ import org.wiztools.restclient.ui.UIUtil;
 import org.wiztools.restclient.ui.history.HistoryManager;
 
 /**
- *
  * @author subwiz
  */
 @Singleton
 public class ReqUrlGoPanelImpl extends JPanel implements ReqUrlGoPanel {
-    
+
     private static final Logger LOG = Logger.getLogger(ReqUrlGoPanelImpl.class.getName());
-    
-    @Inject private RESTUserInterface rest_ui;
-    @Inject private UrlComboBox jcb_url;
-    
+
+    @Inject
+    private RESTUserInterface rest_ui;
+    @Inject
+    private UrlComboBox jcb_url;
+
+    private Boolean go_trim_flag = true;
+
     private final ImageIcon icon_go = UIUtil.getIconFromClasspath("org/wiztools/restclient/go.png");
     private final ImageIcon icon_stop = UIUtil.getIconFromClasspath("org/wiztools/restclient/stop.png");
-    
+
     private static final String TEXT_GO = "Go!";
     private static final String TEXT_STOP = "Stop!";
-    
+
     private final JButton jb_request = new JButton(icon_go);
-    
+
     private final List<ActionListener> listeners = new ArrayList<>();
 
-    private Request findMatchUrl(HistoryManager historyManger, String matchingUrl){
+    private Request findMatchUrl(HistoryManager historyManger, String matchingUrl) {
         int currentCursor = historyManger.cursor();
         Request backRequest;
         Request forwardRequest;
@@ -59,7 +64,7 @@ public class ReqUrlGoPanelImpl extends JPanel implements ReqUrlGoPanel {
         }
         historyManger.setCursor(currentCursor);
         forwardRequest = historyManger.forward();
-        while ( null != forwardRequest) {
+        while (null != forwardRequest) {
             if (forwardRequest.getUrl().toString().equals(matchingUrl)) {
                 return forwardRequest;
             }
@@ -88,40 +93,45 @@ public class ReqUrlGoPanelImpl extends JPanel implements ReqUrlGoPanel {
         jcb_url.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
-                String url = "";
-                HistoryManager historyManager = rest_ui.getView().getHistoryManager();
-                Object urlObject = jcb_url.getSelectedItem();
-                if (null != urlObject) {
-                    url = urlObject.toString();
-                    Request matchRequest = findMatchUrl(historyManager, url);
-                    if (null != matchRequest) {
-                        // set method,body etc.
-                        if (e.getStateChange() == ItemEvent.DESELECTED) {
-                            rest_ui.getView().setUIFromRequest(matchRequest, false);
+                LOG.log(Level.INFO, "event is : " + e.paramString());
+                if (go_trim_flag) {
+                    LOG.log(Level.INFO, "req url combox will trim!!!!!!");
+                    if (e.getStateChange() == ItemEvent.SELECTED) {
+                        String url = "";
+                        HistoryManager historyManager = rest_ui.getView().getHistoryManager();
+                        Object urlObject = jcb_url.getSelectedItem();
+                        if (null != urlObject) {
+                            url = urlObject.toString();
+                            Request matchRequest = findMatchUrl(historyManager, url);
+                            if (null != matchRequest) {
+                                // set method,body etc.
+                                rest_ui.getView().setUIFromRequest(matchRequest, false);
+                            } else {
+                                rest_ui.getView().clearUIRequest(false);
+                            }
                         }
-                    } else {
-                        rest_ui.getView().clearUIRequest(false);
                     }
+                } else {
+                    setTrimFlag(true);
                 }
-
             }
         });
-        
+
         // Layout follows:
-        
+
         // West:
         JLabel jl_url = new JLabel("URL: ");
         jl_url.setLabelFor(jcb_url);
         jl_url.setDisplayedMnemonic('u');
         rest_ui.getFrame().getRootPane().setDefaultButton(jb_request);
-        
+
         setLayout(new BorderLayout(RESTView.BORDER_WIDTH, 0));
-        
+
         add(jl_url, BorderLayout.WEST);
-        
+
         // Center:
         add(jcb_url, BorderLayout.CENTER);
-        
+
         // East:
         jb_request.setToolTipText(TEXT_GO);
         rest_ui.getFrame().getRootPane().setDefaultButton(jb_request);
@@ -138,26 +148,25 @@ public class ReqUrlGoPanelImpl extends JPanel implements ReqUrlGoPanel {
     public void addActionListener(ActionListener listener) {
         listeners.add(listener);
     }
-    
+
     public ACTION_TYPE getActionType() {
-        if(jb_request.getIcon() == icon_go){
+        if (jb_request.getIcon() == icon_go) {
             return ACTION_TYPE.GO;
-        }
-        else {
+        } else {
             return ACTION_TYPE.CANCEL;
         }
     }
-    
+
     private void jb_requestActionPerformed() {
-        if(StringUtil.isNotEmpty((String)jcb_url.getSelectedItem())) {
+        if (StringUtil.isNotEmpty((String) jcb_url.getSelectedItem())) {
             jcb_url.push();
         }
-        
-        for(ActionListener listener: listeners) {
+
+        for (ActionListener listener : listeners) {
             listener.actionPerformed(null);
         }
     }
-    
+
     @Override
     public String getUrlString() {
         return (String) jcb_url.getSelectedItem();
@@ -165,6 +174,7 @@ public class ReqUrlGoPanelImpl extends JPanel implements ReqUrlGoPanel {
 
     @Override
     public void setUrlString(String url) {
+        setTrimFlag(false);
         jcb_url.setSelectedItem(url);
     }
 
@@ -172,16 +182,15 @@ public class ReqUrlGoPanelImpl extends JPanel implements ReqUrlGoPanel {
     public boolean isSslUrl() {
         try {
             URL url = new URL((String) jcb_url.getSelectedItem());
-            if(url.getProtocol().equalsIgnoreCase("https")) {
+            if (url.getProtocol().equalsIgnoreCase("https")) {
                 return true;
             }
-        }
-        catch(MalformedURLException ex) {
+        } catch (MalformedURLException ex) {
             // return default value!
         }
         return false;
     }
-    
+
     @Override
     public void clearHistory() {
         jcb_url.removeAllItems();
@@ -190,7 +199,7 @@ public class ReqUrlGoPanelImpl extends JPanel implements ReqUrlGoPanel {
     @Override
     public void requestFocus() {
         super.requestFocus();
-        
+
         jcb_url.requestFocus();
     }
 
@@ -204,6 +213,11 @@ public class ReqUrlGoPanelImpl extends JPanel implements ReqUrlGoPanel {
     public void setAsIdle() {
         jb_request.setIcon(icon_go);
         jb_request.setToolTipText(TEXT_GO);
+    }
+
+    @Override
+    public void setTrimFlag(Boolean flag) {
+        go_trim_flag = flag;
     }
 
     @Override

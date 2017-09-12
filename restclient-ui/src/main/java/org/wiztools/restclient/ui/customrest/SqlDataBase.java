@@ -84,8 +84,9 @@ public class SqlDataBase {
         return df.format(new java.util.Date());
     }
 
-    public void insertIpRecode(String ipAddress) {
+    public int insertIpRecode(String ipAddress) {
         String time = getDateString();
+        int result;
         // 首先要判断该IP是否存在，存在则更新时间，否则插入
         String sqlStr = "SELECT value FROM " + TABLENAME + " where id='IP' and value='" + ipAddress + "';";
         ResultSet rs = query(sqlStr);
@@ -93,14 +94,18 @@ public class SqlDataBase {
             if (rs.next()) {
                 sqlStr = "UPDATE " + TABLENAME + " set date='" +time +"' where id='IP' and value='" +
                         ipAddress + "';";
+                result = 1;
             }
             else {
                 sqlStr = "INSERT INTO " + TABLENAME + " (id, value, date, info, comment) " +
                         "VALUES ('IP', '" + ipAddress + "', '" + time +"', '', '');";
+                result = 0;
             }
             execute(sqlStr);
+            return result;
         } catch(Exception e) {
             view.showError(Util.getStackTrace(e));
+            return -1;
         }
     }
 

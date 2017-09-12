@@ -15,7 +15,7 @@ public interface HistoryManager {
     
     String HISTORY_SIZE_CONFIG_KEY = "ui.history.size";
     
-    int DEFAULT_HISTORY_SIZE = 15;
+    int DEFAULT_HISTORY_SIZE = 150;
     File DEFAULT_FILE = ConfigUtil.getConfigFile("history.xml");
     
     void setHistorySize(int size);

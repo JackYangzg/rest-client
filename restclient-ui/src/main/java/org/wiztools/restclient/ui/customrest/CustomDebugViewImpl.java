@@ -492,16 +492,17 @@ public class CustomDebugViewImpl extends JPanel implements CustomDebugView {
         }
 
         if (ipCheck(ip)) {
-            sqlObject.insertIpRecode(ip);
-            List<String> ipList = sqlObject.getIpRecode();
-            isIpNeedSync = false;
-            ipComboBox.removeAllItems();
-            for (String host : ipList) {
+            if (1 != sqlObject.insertIpRecode(ip)) {
+                List<String> ipList = sqlObject.getIpRecode();
                 isIpNeedSync = false;
-                ipComboBox.addItem(host);
+                ipComboBox.removeAllItems();
+                for (String host : ipList) {
+                    isIpNeedSync = false;
+                    ipComboBox.addItem(host);
+                }
+                isIpNeedSync = false;
+                ipComboBox.setSelectedItem(ip);
             }
-            isIpNeedSync = false;
-            ipComboBox.setSelectedItem(ip);
         }
     }
 
